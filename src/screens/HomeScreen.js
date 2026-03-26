@@ -63,16 +63,15 @@ const donationCards = [
 
 const amounts = [50, 100, 200, 400, 550, 600, 900, 1000];
 
-export default function HomeScreen() {
+export default function HomeScreen({ navigation }) {
   const [search, setSearch] = useState('');
   const [selectedCard, setSelectedCard] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isConfirmationVisible, setIsConfirmationVisible] = useState(false);
 
   // Modal State
   const [selectedAmount, setSelectedAmount] = useState(50);
   const [quantity, setQuantity] = useState(1);
-  const [cartCount, setCartCount] = useState(0);
+  const [cartItems, setCartItems] = useState([]);
 
   const filteredCards = donationCards.filter((item) =>
     item.title.toLowerCase().includes(search.toLowerCase())
@@ -84,13 +83,28 @@ export default function HomeScreen() {
     setQuantity(1);
   };
 
-  const handlePayment = () => {
-    setIsConfirmationVisible(true);
+  const handleAddToCart = () => {
+    const newItem = {
+      ...selectedCard,
+      amount: selectedAmount,
+      quantity: quantity,
+      cartId: Date.now() // Unique ID for cart item
+    };
+    setCartItems([...cartItems, newItem]);
+    setSelectedCard(null);
   };
 
-  const closeConfirmation = () => {
-    setIsConfirmationVisible(false);
+  const handlePayment = () => {
+    const newItem = {
+      ...selectedCard,
+      amount: selectedAmount,
+      quantity: quantity,
+      cartId: Date.now()
+    };
+    const updatedCart = [...cartItems, newItem];
+    setCartItems(updatedCart);
     setSelectedCard(null);
+    navigation.navigate('Cart', { cartItems: updatedCart });
   };
 
   const renderItem = ({ item }) => (
@@ -115,11 +129,14 @@ export default function HomeScreen() {
           <Text style={styles.headerTitle}>Hopecard</Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.cartBtn}>
+          <TouchableOpacity
+            style={styles.cartBtn}
+            onPress={() => navigation.navigate('Cart', { cartItems })}
+          >
             <Text style={styles.cartText}>Cart</Text>
-            {cartCount > 0 && (
+            {cartItems.length > 0 && (
               <View style={styles.cartBadge}>
-                <Text style={styles.badgeText}>{cartCount}</Text>
+                <Text style={styles.badgeText}>{cartItems.length}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -158,7 +175,7 @@ export default function HomeScreen() {
 
       {/* Campaign Details Modal */}
       <Modal
-        visible={!!selectedCard && !isConfirmationVisible}
+        visible={!!selectedCard}
         animationType="slide"
         transparent
         onRequestClose={() => setSelectedCard(null)}
@@ -195,8 +212,8 @@ export default function HomeScreen() {
                 </View>
 
                 <Text style={styles.sectionTitle}>Quantity</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                  <TouchableOpacity style={styles.addToCartBtn} onPress={() => setCartCount(c => c + 1)}>
+                <View style={styles.qtyContainer}>
+                  <TouchableOpacity style={styles.addToCartBtn} onPress={handleAddToCart}>
                     <Text style={styles.addToCartText}>🛒 Add to cart</Text>
                   </TouchableOpacity>
 
@@ -246,58 +263,20 @@ export default function HomeScreen() {
             </View>
 
             <TouchableOpacity style={styles.menuItem}>
-              <Text style={styles.menuItemIcon}>👤</Text>
+              <Text style={styles.menuItemIcon}></Text>
               <Text style={styles.menuItemText}>User Profile</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.menuItem}>
-              <Text style={styles.menuItemIcon}>💳</Text>
+              <Text style={styles.menuItemIcon}></Text>
               <Text style={styles.menuItemText}>Transactions</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.menuItem}>
-              <Text style={styles.menuItemIcon}>⚙️</Text>
+              <Text style={styles.menuItemIcon}></Text>
               <Text style={styles.menuItemText}>Settings</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
-
-      {/* Confirmation Modal */}
-      <Modal
-        visible={isConfirmationVisible}
-        animationType="fade"
-        transparent
-        onRequestClose={closeConfirmation}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.confirmationModal}>
-             <Text style={styles.confirmHeader}>Donation Confirmation</Text>
-
-             <View style={styles.successIconBox}>
-                <View style={styles.successCircle}>
-                  <Text style={styles.successCheck}>✓</Text>
-                </View>
-             </View>
-
-             <Text style={styles.thankYou}>Thank You!</Text>
-             <Text style={styles.confirmSubtitle}>We have received your payment for {selectedCard?.title}.</Text>
-             <Text style={styles.confirmAmount}>₱{selectedAmount * quantity}</Text>
-
-             <Text style={styles.shareLabel}>Your Sharable Donation Link:</Text>
-             <View style={styles.linkBox}>
-                <Text style={styles.linkText} numberOfLines={1}>api.digitaldonor.example.com/donations/DON-987654</Text>
-                <TouchableOpacity><Text style={styles.copyIcon}>📋</Text></TouchableOpacity>
-             </View>
-
-             <TouchableOpacity
-              style={styles.backHomeBtn}
-              onPress={closeConfirmation}
-             >
-               <Text style={styles.backHomeText}>BACK TO HOMEPAGE</Text>
-             </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
     </View>
   );
 }
@@ -412,19 +391,4 @@ const styles = StyleSheet.create({
   menuItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 25 },
   menuItemIcon: { fontSize: 24, marginRight: 16 },
   menuItemText: { fontSize: 18, color: '#333', fontWeight: '500' },
-
-  confirmationModal: { backgroundColor: '#fff', width: width * 0.9, borderRadius: 20, padding: 24, alignItems: 'center' },
-  confirmHeader: { fontSize: 20, fontWeight: 'bold', color: '#801A1A', marginBottom: 30 },
-  successIconBox: { marginBottom: 20 },
-  successCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#4CAF50', justifyContent: 'center', alignItems: 'center' },
-  successCheck: { color: '#fff', fontSize: 40, fontWeight: 'bold' },
-  thankYou: { fontSize: 24, fontWeight: 'bold', color: '#801A1A', marginBottom: 10 },
-  confirmSubtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 10 },
-  confirmAmount: { fontSize: 18, fontWeight: 'bold', color: '#801A1A', marginBottom: 30 },
-  shareLabel: { fontSize: 14, color: '#801A1A', alignSelf: 'flex-start', marginBottom: 10 },
-  linkBox: { flexDirection: 'row', backgroundColor: '#f5f5f5', padding: 12, borderRadius: 8, alignItems: 'center', marginBottom: 30 },
-  linkText: { flex: 1, color: '#666', fontSize: 13 },
-  copyIcon: { fontSize: 18, marginLeft: 10 },
-  backHomeBtn: { backgroundColor: '#f0f0f0', width: '100%', height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center' },
-  backHomeText: { color: '#666', fontWeight: 'bold' },
 });
